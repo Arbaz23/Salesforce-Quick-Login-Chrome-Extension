@@ -186,8 +186,8 @@ $(function()
 
         $("#users").append($table);
 
-        //handle login links
-        $("td.actionColumn a:contains('Login')", $table).each(function()
+        //handle login links (https://medium.com/smartbox-engineering/impersonating-salesforce-users-in-test-frameworks-903b7de597c0)
+        $("td.actionColumn a[href*=suorgadminid]", $table).each(function()
         {
             $login = $(this);
 
