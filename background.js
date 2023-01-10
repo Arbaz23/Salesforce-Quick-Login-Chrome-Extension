@@ -1,23 +1,30 @@
-// Called when the url of a tab changes.
-function checkForValidUrl(tabId, changeInfo, tab) {
-	//matches examples
-	//na4.salesforce.com
-	//cs13.salesforce.com
-	//company.my.salesforce.com
-	//emea.salesforce.com
+chrome.runtime.onInstalled.addListener(() => {
+	// Disable Page actions by default and enable on Salesforce tabs
+	chrome.action.disable();
 
-    var urlIsValid = false;
-	if (tab.url.match(/(ap|eu|na|cs|emea|.*\.my)[0-9]*\.(visual\.force\.com|salesforce\.com)/) !== null) {
-        urlIsValid = true;
-	}
+	// Clear all rules to ensure only our expected rules are set
+	chrome.declarativeContent.onPageChanged.removeRules(undefined, () => {
 
-    if (tab.url.match(/(.*).(lightning\.force\.com)/) !== null) {
-        urlIsValid = true;
-    }
-	if (urlIsValid) {
-        chrome.pageAction.show(tabId);
-    }
-}
+		// Declare a rule to enable the action on Salesforce pages
+		// Matches examples :
+		// na4.salesforce.com
+		// cs13.salesforce.com
+		// company.my.salesforce.com
+		// emea.salesforce.com
+		let isValidUrlRule = {
+			conditions: [
+				new chrome.declarativeContent.PageStateMatcher({
+					pageUrl: {urlMatches: '(ap|eu|na|cs|emea|.*\.my)[0-9]*\.(visual\.force\.com|salesforce\.com)'}
+				}),
+				new chrome.declarativeContent.PageStateMatcher({
+					pageUrl: {urlMatches: '(.*).(lightning\.force\.com)'}
+				})
+			],
+			actions: [new chrome.declarativeContent.ShowAction()],
+		};
 
-// Listen for any changes to the URL of any tab.
-chrome.tabs.onUpdated.addListener(checkForValidUrl);
+		// Finally, apply our new array of rules
+		let rules = [isValidUrlRule];
+		chrome.declarativeContent.onPageChanged.addRules(rules);
+	});
+});
