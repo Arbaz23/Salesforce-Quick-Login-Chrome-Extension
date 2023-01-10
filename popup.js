@@ -5,9 +5,9 @@ var pageSize = 1000; // max size is 1000
 
 $(function()
 {
-    chrome.tabs.getSelected(null, function(tab)
+    chrome.tabs.query({active: true, lastFocusedWindow: true}, function(tabs)
     {
-        handleSelectedTab(tab.url);
+        handleSelectedTab(tabs[0].url);
     });
 
     //button to show all columns
