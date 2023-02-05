@@ -4,6 +4,29 @@ var lsr = 0; // used to determine current start number for existing page by sort
 var pageSize = 1000; // max size is 1000
 
 document.addEventListener("DOMContentLoaded", () => {
+  function localizeHtmlPage (elm) {
+    const messageRegex = /__MSG_(\w+)__/g;
+
+    for (var i = 0; i < elm.children.length; i++) {
+      localizeHtmlPage(elm.children[i]);
+      if (elm.children[i].hasAttributes()) {
+        for (var j = 0; j < elm.children[i].attributes.length; j++) {
+          elm.children[i].attributes[j].name = elm.children[i].attributes[j].name.replace(messageRegex, localizeString);
+          elm.children[i].attributes[j].value = elm.children[i].attributes[j].value.replace(messageRegex, localizeString);
+        }
+      }
+      if (elm.children[i].innerHTML.length) {
+        elm.children[i].innerHTML = elm.children[i].innerHTML.replace(messageRegex, localizeString);
+      }
+    }
+  }
+
+  function localizeString(_, str) {
+    return str ? chrome.i18n.getMessage(str) : "";
+  }
+
+  localizeHtmlPage(document.body);
+
   chrome.tabs.query({active: true, lastFocusedWindow: true}, function(tabs) {
     handleSelectedTab(tabs[0].url);
   });
@@ -15,10 +38,10 @@ document.addEventListener("DOMContentLoaded", () => {
       document.querySelectorAll(".hideColumn").forEach((el) => {
         el.classList.remove("hideColumn");
       });
-      e.target.innerText = "Some Columns";
+      e.target.innerText = chrome.i18n.getMessage("popupShowSomeColumns");
     } else {
       hideColumns(document.querySelector("table.list"));
-      e.target.innerText = "Alls Columns";
+      e.target.innerText = chrome.i18n.getMessage("popupShowAllColumns");
     }
   });
 
@@ -236,7 +259,7 @@ document.addEventListener("DOMContentLoaded", () => {
         e.innerHTML = "";
       });
       
-      document.getElementById("toggleAllColumns").innerText = "All Columns";
+      document.getElementById("toggleAllColumns").innerText = chrome.i18n.getMessage("popupShowAllColumns");
     
       //uncheck the Show Only Users With Login checkbox on every new load of users
       //since it has to be clicked every time
