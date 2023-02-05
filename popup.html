@@ -31,14 +31,14 @@
       </head>
     <body id="quickLoginChrome">
         <div id="menu" style="display: none;">
-            <div class="menuRow">View: <span id="viewDropdown"></span></div>
-            <div class="menuRow">Show: <a href="#" id="toggleAllColumns">All Columns</a></div>
-			<div class="menuRow">Filter: <input type="text" id="txtFilter" /> <span id="spFilterStatus"></span></div>
-            <div class="menuRow loginUsersOnlyRow">Show Only Users With Login Link: <input type="checkbox" id="toggleLoginAsFilter"/></div>
+            <div class="menuRow">__MSG_popupSettingViewSelection__ <span id="viewDropdown"></span></div>
+            <div class="menuRow">__MSG_popupSettingShowColumns__ <a href="#" id="toggleAllColumns">__MSG_popupShowAllColumns__</a></div>
+			<div class="menuRow">__MSG_popupSettingFilter__ <input type="text" id="txtFilter" /> <span id="spFilterStatus"></span></div>
+            <div class="menuRow loginUsersOnlyRow">__MSG_popupSettingOnlyShowUserWithLogin__ <input type="checkbox" id="toggleLoginAsFilter"/></div>
 
             <div class="menuRow" id="navigationButtons"></div>
         </div>
-        <span id="loading">Loading...</span>
+        <span id="loading">__MSG_popupLoading__</span>
         <div id="users"></div>
     </body>
 </html>

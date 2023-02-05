@@ -1,0 +1,42 @@
+{
+    "extName": {
+        "message": "Salesforce.com Quick Login As",
+        "description": "Extension name"
+    },
+    "extShortDesc": {
+        "message": "Makes it easy to login as another user in Salesforce. Maintains the page currently being viewed.",
+        "description": "Extension description"
+    },
+    "extActionTitle": {
+        "message": "Quickly Login As Another User",
+        "description": "Popup action title"
+    },
+    "popupLoading": {
+        "message": "Loading…",
+        "description": "Popup loading message"
+    },
+    "popupShowAllColumns": {
+        "message": "All Columns",
+        "description": "Popup setting to show all columns"
+    },
+    "popupShowSomeColumns": {
+        "message": "Some Columns",
+        "description": "Popup setting to show only first three columns"
+    },
+    "popupSettingViewSelection": {
+        "message": "View:",
+        "description": "Popup setting name to set Salesforce view to show in the popup"
+    },
+    "popupSettingShowColumns": {
+        "message": "Show:",
+        "description": "Popup setting name to set if all or some columns should be shown"
+    },
+    "popupSettingFilter": {
+        "message": "Filter:",
+        "description": "Popup setting name for filtering users in table (for eg. with the name)"
+    },
+    "popupSettingOnlyShowUserWithLogin": {
+        "message": "Show Only Users With Login Link:",
+        "description": ""
+    }
+}
