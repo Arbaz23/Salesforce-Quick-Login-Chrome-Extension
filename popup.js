@@ -3,264 +3,265 @@ var sDomain = "";
 var lsr = 0; // used to determine current start number for existing page by sort
 var pageSize = 1000; // max size is 1000
 
-$(function()
-{
-    chrome.tabs.query({active: true, lastFocusedWindow: true}, function(tabs)
-    {
-        handleSelectedTab(tabs[0].url);
-    });
+document.addEventListener("DOMContentLoaded", () => {
+  chrome.tabs.query({active: true, lastFocusedWindow: true}, function(tabs) {
+    handleSelectedTab(tabs[0].url);
+  });
 
-    //button to show all columns
-    $("#toggleAllColumns").click(function()
-    {
-        // Make this a toggle
-        if($(".hideColumn").length > 0) {
-            $(".hideColumn").removeClass('hideColumn');
-            $(this).text("Some Columns");
-        } else {
-            HideColumns($("table.list"));
-            $(this).text("All Columns");
-        }
-        return false;
-    });
-
-    //toggle rows that don't have a Login link available
-    $("#quickLoginChrome #toggleLoginAsFilter").change(function(event) {
-      var checked = event.target.checked;
-
-      $('td.actionColumn').each(function() {
-        var $this = $(this);
-        if ( checked && ! $this.hasClass('loginRow') ) {
-          $this.parent().hide();
-        } else {
-          $this.parent().show();
-        }
+  //button to show all columns
+  document.getElementById("toggleAllColumns").addEventListener("click", (e) => {
+    // Make this a toggle
+    if(document.querySelectorAll(".hideColumn").length > 0) {
+      document.querySelectorAll(".hideColumn").forEach((el) => {
+        el.classList.remove("hideColumn");
       });
-    });
+      e.target.innerText = "Some Columns";
+    } else {
+      hideColumns(document.querySelector("table.list"));
+      e.target.innerText = "Alls Columns";
+    }
+  });
 
-    //handle next/previous page link clicks
-    $(document).on("click", "#quickLoginChrome div#navigationButtons a", function() {
-      var $ddlView = $("#quickLoginChrome select#fcf");
-      if ( $(this).html().toLowerCase().indexOf("next") >= 0 ) {
-        lsr += pageSize;
+  //toggle rows that don't have a Login link available
+  document.getElementById("toggleLoginAsFilter").addEventListener("change", (event) => {
+    let checked = event.target.checked;
+
+    document.querySelectorAll('td.actionColumn').forEach((column) => {
+      if ( checked && ! column.classList.contains('loginRow') ) {
+        column.parentElement.style.display = "none";
       } else {
-        lsr -= pageSize;
+        column.parentElement.style.display = "table-row";
       }
+    });
+  });
 
-      //keep the current users width so the popup window doesn't become skinny when the table
-      //is empty and then wide again when the table is reloaded
-      $("#users").css("width", $("#users").outerWidth());
-      $("#quickLoginChrome #users").empty();
-      $("#quickLoginChrome #loading").show();
-      RequestUsers($ddlView.val(), lsr);
+  //handle next/previous page link clicks
+  document.addEventListener("click", (event) => {
+    if (!event.target.closest("#quickLoginChrome div#navigationButtons a")) return;
+
+    const ddlView = document.querySelector("#quickLoginChrome select#fcf");
+    const navigationButton = event.target;
+    if (navigationButton.innerHTML.toLowerCase().includes("next")) {
+      lsr += pageSize;
+    } else {
+      lsr -= pageSize;
+    }
+
+    //keep the current users width so the popup window doesn't become skinny when the table
+    //is empty and then wide again when the table is reloaded
+    const users = document.querySelector("#users");
+    users.style.width = `${users.offsetWidth}px`;
+    document.getElementById("users").innerHTML = "";
+    document.getElementById("loading").style.display = "block";
+    requestUsers(ddlView.value, lsr);
+  });
+
+  attachFilterHandling();
+
+  function handleSelectedTab(tabUrl) {
+      sTabURL = tabUrl;
+      let hostname = (new URL(tabUrl)).hostname;
+      sDomain = `https://${hostname}`;
+      requestUsers("");
+  }
+
+  function attachFilterHandling() {
+    let typingTimer;
+    const doneTypingInterval = 250;
+
+    document.getElementById("txtFilter").addEventListener("keyup", () => {
+      clearTimeout(typingTimer);
+      typingTimer = setTimeout(doneTyping, doneTypingInterval);
     });
 
-    AttachFilterHandling();
+    const doneTyping = () => {
+      const sFilterText = document.getElementById("txtFilter").value;
+      document.getElementById("spFilterStatus").textContent = "Filtering";
+      const trData = document.querySelectorAll("div#users table.list tr.dataRow");
 
-    function handleSelectedTab(tabUrl)
-    {
-        sTabURL = tabUrl;
-        var hostname = (new URL(tabUrl)).hostname;
-        sDomain = 'https://' + hostname;
-        RequestUsers("");
+      if (sFilterText != "") {
+        Array.from(trData).forEach((el) => {
+          if(el.textContent.toUpperCase().includes(sFilterText.toUpperCase())) {
+            el.style.display = "table-row";
+          } else {
+            el.style.display = "none";
+          }
+        });
+      } else {
+        trData.forEach(el => el.style.display = "table-row");
+      }
+      document.getElementById("spFilterStatus").textContent = "";
+    }
+  }
+
+  async function requestUsers(sViewId, startNum) {
+    //build a url to the Manage Users page so we can get the users html table
+    const sFilter = sViewId !== "" ? `fcf=${sViewId}&` : "";
+    const sLsr = Number.isInteger(startNum) ? startNum : 0;
+    const sUsersPage = `${sDomain}/005?isUserEntityOverride=1&${sFilter}rowsperpage=${pageSize}&lsr=${sLsr}`;
+    
+    const response = await fetch(sUsersPage);
+    const data = await response.text();
+    
+    const parser = new DOMParser();
+    const html = parser.parseFromString(data, "text/html");
+
+     // Figure out if there are previous/next links so we can provide them in the extension too
+    let navigationButtons = document.querySelector('#quickLoginChrome #navigationButtons');
+    navigationButtons.innerHTML = '';
+
+    const nextLinks = html.querySelectorAll('.listElementBottomNav div.next a');
+    Array.from(nextLinks).forEach((link, index) => {
+      link.href = '#';
+      if (index != 0) {
+        navigationButtons.innerHTML += ' | ';
+      }
+      navigationButtons.appendChild(link);
+    });
+    
+    // remove any images and also the Check All checkbox from the action column header
+    const images = html.querySelectorAll('img');
+    for (const img of images) {
+      img.remove();
+    }
+    const allBox = html.querySelector('#allBox');
+    if (allBox) {
+      allBox.remove();
     }
 
-    function AttachFilterHandling()
-    {
-      //case insensitive 'contains'
-      jQuery.expr[':'].containsCI = function(a, i, m) {
-       return jQuery(a).text().toUpperCase().indexOf(m[3].toUpperCase()) >= 0;
-      };
-
-      var typingTimer;
-      var doneTypingInterval = 250;
-
-      $("#txtFilter").keyup(function()
-      {
-        clearTimeout(typingTimer);
-        typingTimer = setTimeout(doneTyping, doneTypingInterval);
-      });
-
-      function doneTyping ()
-      {
-        var sFilterText = $("#txtFilter").val();
-        $("#spFilterStatus").text("Filtering");
-        var $trData = $("div#users table.list tr.dataRow");
-        if (sFilterText != "")
-        {
-          $trData.hide().filter(":containsCI('" + sFilterText + "')").show();
-        }
-        else
-        {
-          $trData.show();
-        }
-        $("#spFilterStatus").text("");
+    // Removing these attributes prevents some errors in the console
+    const rows = html.querySelectorAll('tr');
+    for (const row of rows) {
+      row.removeAttribute('onblur');
+      row.removeAttribute('onmouseout');
+      row.removeAttribute('onfocus');
+      row.removeAttribute('onmouseover');
+      if (row !== rows[0]) {
+        row.addEventListener('mouseenter', () => row.classList.add('highlight'));
+        row.addEventListener('mouseleave', () => row.classList.remove('highlight'));
       }
     }
+    displayUsers(html);
+  }
 
-    function RequestUsers(sViewId, startNum)
-    {
-        //build a url to the Manage Users page so we can get the users html table
-        var sFilter = (sViewId !== "") ? "fcf="+sViewId+"&" : "";
-        var sLsr = (Number.isInteger(startNum) ? startNum : 0);
-        var sUsersPage = sDomain+"/005?isUserEntityOverride=1&"+sFilter+"rowsperpage=" + pageSize + "&lsr=" + sLsr;
-        $.get(sUsersPage, function(data)
-        {
-            html = (new DOMParser()).parseFromString(data, "text/html");
+  function hideColumns(table) {
+    Array.from(table.getElementsByTagName('tr')).forEach((row) => {
+      for (let i = 3, col; col = row.cells[i]; i++) {
+        col.classList.add('hideColumn');
+      }
+    });
+  }
 
-            // Figure out if there are previous/next links so we can provide them in the extension too
-            var $navigationButtons = $("#quickLoginChrome #navigationButtons");
-            $navigationButtons.empty();
-            var first = true;
-            $(".listElementBottomNav div.next a", html).each(function() {
-              var $this = $(this);
-              var href = $this.attr("href");
-              $this.attr("href", "#");
-
-              if (!first) {
-                $navigationButtons.append(" | ");
-              } else {
-                first = false;
-              }
-              $navigationButtons.append($this);
-            });
-
-            //remove any images and also the Check All checkbox from the action column header
-            $("img, #allBox", html).remove();
-            
-            // Removing these attributes prevents some errors in the console
-            $("tr", html)
-            .removeAttr('onblur')
-            .removeAttr('onmouseout')
-            .removeAttr('onfocus')
-            .removeAttr('onmouseover')
-            .not(':first')
-            .hover(
-              function() {
-                  $(this).addClass('highlight');
-              },
-              function() {
-                  $(this).removeClass('highlight');
-              }
-            );
-
-            DisplayUsers(html);
-        });
-    }
-
-    function HideColumns($table)
-    {
-        //only show first x columns?
-        $("tr", $table).each(function(){
-            // use a class so we can hide these while toggling rows on/off
-            // This should show name, email and action buttons (if you use
-            // a standard layout)
-            $(this).children(':gt(3)').addClass('hideColumn');
-        });
-    }
-
-    function DisplayUsers(data)
-    {				
-        //reset certain menu controls
-        $("#txtFilter").val("");
-        $("#toggleLoginAsFilter").attr("checked", false);
-        
-        //find the view dropdown from the manage users page
-        var $ddlView = $("select#fcf", data);
-        // Removing these attribute prevents some errors in the console
-        $ddlView.removeAttr("onchange");
-        $("#viewDropdown").empty().append($ddlView);
-        $ddlView.change(function()
-        {
-            //keep the current users width so the popup window doesn't become skinny when the table
-            //is empty and then wide again when the table is reloaded
-            $("#users").css("width", $("#users").outerWidth());
-            // When we select a new set of users, clear the display
-            $("#users").empty();
-            $("#loading").show();
-            RequestUsers($(this).val());
-        });
-
-        var $table = $("div.setupBlock table.list", data);
-        HideColumns($table);
-
-        $("#users").append($table);
-
-        //handle login links (https://medium.com/smartbox-engineering/impersonating-salesforce-users-in-test-frameworks-903b7de597c0)
-        $("td.actionColumn a[href*=suorgadminid]", $table).each(function()
-        {
-            $login = $(this);
-
-            //flag the login links and remove other action cell elements (edit link, checkbox)
-            $login.addClass("loginLink")
-            .parent().addClass("loginRow").html("").append($login);
-
-            //update login url to set target and return URL to the current url
-            var sLogin = $login.attr("href");
-
-            //strip off the retURL and targetURL
-            var regexRetURL = /(&|\?)retURL=([^&]*)/;
-            var regexTargetURL = /(&|\?)targetURL=([^&]*)/;
-            sLogin = sLogin.replace(regexRetURL, "");
-            sLogin = sLogin.replace(regexTargetURL, "");
-
-            //build our new url with the ret and target urls being the current url we are on
-            //so users will go directly to the current page
-            sLogin += sLogin.includes('?') ? '&' : '?';
-            sLogin += "isUserEntityOverride=1";
-            sLogin += "&retURL=" + encodeURIComponent(sTabURL);
-            sLogin += "&targetURL=" + encodeURIComponent(sTabURL);
-
-            sLogin = sDomain + sLogin;
-
-            $login.attr("href", sLogin);
-        }).click(function() {
-            //update the main browser tab (not the popup) and make the main browser tab
-            //active which will close the popup
-            chrome.tabs.update(null, {url: $(this).attr("href"), active: true});
-            window.close();
-            return false;
-        });
-
-        //update any other links in the table that are not the Login link
-        //to be absolute links and open in a new tab so users can still access user detail pages, profile/role pages etc.
-        $("a:not('.loginLink')", $table).each(function() {
-            var $this = $(this);
-
-            var href = $this.attr('href');
-            if (!href.startsWith('https://') && href.startsWith('/')) {
-                $this.attr("href", sDomain + href);
-            }
-            $this.attr("target", "_blank");
-        });
-
-        //Clear out action column for users that didn't have login link
-        $("td.actionColumn:not('.loginRow')").empty();
-        
-        $("#toggleAllColumns").text("All Columns");
+  function displayUsers(data) {				
+      //reset certain menu controls
+      document.getElementById("txtFilter").value = "";
+      document.getElementById("toggleLoginAsFilter").checked = false;
       
-        //uncheck the Show Only Users With Login checkbox on every new load of users
-        //since it has to be clicked every time
-        //also hide the checkbox option if every user has Login links since the checkbox
-        //would not do anything
-        if ($("td.actionColumn:not(.loginRow)").length > 0)
-        {
-          $(".loginUsersOnlyRow").show();
+      //find the view dropdown from the manage users page
+      let ddlView = data.querySelector("select#fcf");
+      // Removing these attribute prevents some errors in the console
+      ddlView.removeAttribute("onchange");
+
+      let viewDropdown = document.getElementById("viewDropdown");
+      viewDropdown.innerHTML = "";
+      viewDropdown.appendChild(ddlView);
+      
+      ddlView.addEventListener("change", () => {
+        //keep the current users width so the popup window doesn't become skinny when the table
+        //is empty and then wide again when the table is reloaded
+        let users = document.getElementById("users");
+        users.style.width = users.offsetWidth + "px";
+        // When we select a new set of users, clear the display
+        users.innerHTML = "";
+        document.getElementById("loading").style.display = "block";
+        requestUsers(ddlView.value);
+      });
+
+      let table = data.querySelector("div.setupBlock table.list");
+      hideColumns(table);
+
+      document.getElementById("users").appendChild(table);
+
+      //handle login links (https://medium.com/smartbox-engineering/impersonating-salesforce-users-in-test-frameworks-903b7de597c0)
+      let loginLinks = table.querySelectorAll("td.actionColumn a[href*=suorgadminid]");
+      Array.from(loginLinks).forEach(loginLink => {
+        let login = loginLink.cloneNode(true);
+
+        //flag the login links and remove other action cell elements (edit link, checkbox)
+        login.classList.add("loginLink");
+
+        let parentElement = loginLink.parentElement;
+        parentElement.classList.add("loginRow");
+        parentElement.innerHTML = "";
+        parentElement.appendChild(login);
+
+        //update login url to set target and return URL to the current url
+        let sLogin = login.getAttribute("href");
+
+        //strip off the retURL and targetURL
+        let regexRetURL = /(&|\?)retURL=([^&]*)/;
+        let regexTargetURL = /(&|\?)targetURL=([^&]*)/;
+        sLogin = sLogin.replace(regexRetURL, "");
+        sLogin = sLogin.replace(regexTargetURL, "");
+
+        //build our new url with the ret and target urls being the current url we are on
+        //so users will go directly to the current page
+        sLogin += sLogin.includes("?") ? "&" : "?";
+        sLogin += "isUserEntityOverride=1";
+        sLogin += "&retURL=" + encodeURIComponent(sTabURL);
+        sLogin += "&targetURL=" + encodeURIComponent(sTabURL);
+        sLogin = sDomain + sLogin;
+        login.setAttribute("href", sLogin);
+
+        login.addEventListener("click", (e) => {
+          //update the main browser tab (not the popup) and make the main browser tab
+          //active which will close the popup
+          chrome.tabs.update(null, {url: e.target.getAttribute("href"), active: true});
+          window.close();
+        });
+      });
+
+      //update any other links in the table that are not the Login link
+      //to be absolute links and open in a new tab so users can still access user detail pages, profile/role pages etc.
+      table.querySelectorAll("a:not(.loginLink)").forEach((e) => {
+        var href = e.getAttribute('href');
+        if (!href.startsWith('https://') && href.startsWith('/')) {
+          e.setAttribute("href", sDomain + href);
         }
-        else
-        {
-          $(".loginUsersOnlyRow").hide();
-        }
+        e.setAttribute("target", "_blank");
+      });
 
-        $("#loading").hide();
-        $("#menu").show();
-        $("#users").css("width", "auto");
+      //Clear out action column for users that didn't have login link
+      document.querySelectorAll("td.actionColumn:not(.loginRow)").forEach((e) => {
+        e.innerHTML = "";
+      });
+      
+      document.getElementById("toggleAllColumns").innerText = "All Columns";
+    
+      //uncheck the Show Only Users With Login checkbox on every new load of users
+      //since it has to be clicked every time
+      //also disbale the checkbox option if every user has Login links since the checkbox
+      //would not do anything
+      let actionColumns = Array.from(document.querySelector("td.actionColumn:not(.loginRow)"));
+      if (actionColumns.length > 0) {
+        document.getElementById("toggleLoginAsFilter").disabled = true;
+      }
+      else
+      {
+        document.getElementById("toggleLoginAsFilter").disabled = false;
+      }
 
-        $("#txtFilter").focus();
+      document.getElementById("loading").style.display = "none";
+      document.getElementById("menu").style.display = "block";
+      document.getElementById("users").style.width = "auto";
 
-        //set width of table to try and prevent the popup from squishing the table
-        $("body").width("800");
-        $table.width($table.outerWidth());
-        $("body").width("auto");
-    }
+      document.getElementById("txtFilter").focus();
+
+      //set width of table to try and prevent the popup from squishing the table
+      document.querySelector("body").style.width = "800px";
+      //table.style.width = table.offsetWidth + "px";
+      table.style.width = "100%";
+      table.style.width = table.offsetWidth + "px";
+      document.querySelector("body").style.width = "auto";
+  }
 });
